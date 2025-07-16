@@ -3,48 +3,44 @@ import { useState, useEffect } from "react";
 import {
   convertMedia,
   checkExtensionType,
-  OUTPUT_VIDEO_EXTENSIONS,
   INPUT_VIDEO_EXTENSIONS,
-} from "../handBrake/converter";
-import { getPresets } from "../handBrake/handBrakeCLI";
-import { PresetGroup } from "../handBrake/presetParser";
+} from "../gifski/converter";
 
 export function ConverterForm({ initialFiles = [] }: { initialFiles?: string[] }) {
   const [isConverting, setConverting] = useState(false);
   const [currentFiles, setCurrentFiles] = useState<string[]>(initialFiles || []);
-  const [outputFormat, setOutputFormat] = useState<(typeof OUTPUT_VIDEO_EXTENSIONS)[number]>(".mp4");
-  const [presets, setPresets] = useState<PresetGroup[]>([]);
-  const [preset, setPreset] = useState<string>("Fast 1080p30");
+  const [fps, setFps] = useState<string>("10");
+  const [scale, setScale] = useState<string>("1024");
 
   useEffect(() => {
     loadDefaults();
-    loadPresets();
     handleFileSelect(initialFiles);
   }, []);
 
   const loadDefaults = () => {
     (async () => {
-      const preset = await LocalStorage.getItem("preset");
-      if (preset && typeof preset === "string") {
-        setPreset(preset);
+      const fps = await LocalStorage.getItem("fps");
+      const scale = await LocalStorage.getItem("scale");
+      if (fps && typeof fps === "string") {
+        setFps(fps);
+      }
+      if (scale && typeof scale === "string") {
+        setScale(scale);
       }
     })();
   };
 
   useEffect(() => {
     (async () => {
-      if (preset) {
-        await LocalStorage.setItem("preset", preset);
+      if (fps) {
+        await LocalStorage.setItem("preset", fps);
+      }
+      if (scale) {
+        await LocalStorage.setItem("preset", scale);
       }
     })();
-  }, [preset]);
+  }, [fps, scale]);
 
-  const loadPresets = () => {
-    (async () => {
-      const presets = await getPresets();
-      setPresets(presets);
-    })();
-  };
 
   const handleFileSelect = (files: string[]) => {
     // Files to convert
@@ -56,7 +52,7 @@ export function ConverterForm({ initialFiles = [] }: { initialFiles?: string[] }
         showToast({
           style: Toast.Style.Failure,
           title: "Invalid selection",
-          message: "No valid media files selected. Please select video files.",
+          message: "No valid media files selected. Please select video files",
         });
       }
     } catch (error) {
@@ -79,7 +75,7 @@ export function ConverterForm({ initialFiles = [] }: { initialFiles?: string[] }
 
     for (const item of currentFiles) {
       try {
-        const outputPath = await convertMedia(item, outputFormat as (typeof OUTPUT_VIDEO_EXTENSIONS)[number], preset);
+        const outputPath = await convertMedia(item, ".gif", fps, scale);
 
         await toast.hide();
         await showToast({
@@ -125,32 +121,24 @@ export function ConverterForm({ initialFiles = [] }: { initialFiles?: string[] }
       {currentFiles.length > 0 && (
         <>
           <Form.Dropdown
-            id="preset"
-            title="Select preset"
-            {...(presets.length > 0 && preset ? { defaultValue: preset } : {})}
-            onChange={setPreset}
+            id="fps"
+            title="Select fps"
+            {...(fps.length > 0 && fps ? { defaultValue: fps } : {})}
+            onChange={setFps}
           >
-            {presets.map((group) => (
-              <Form.Dropdown.Section title={group.category} key={group.category}>
-                {group.presets.map((item) => (
-                  <Form.Dropdown.Item value={item} title={item} key={item} />
-                ))}
-              </Form.Dropdown.Section>
+            {["10", "15", "30"].map((fps) => (
+              <Form.Dropdown.Item value={fps} title={fps} key={fps} />
             ))}
           </Form.Dropdown>
           <Form.Dropdown
-            id="format"
-            title="Select output format"
-            value={outputFormat}
-            onChange={(newFormat) => {
-              setOutputFormat(newFormat as (typeof OUTPUT_VIDEO_EXTENSIONS)[number]);
-            }}
+            id="scale"
+            title="Select scale"
+            {...(scale.length > 0 && scale ? { defaultValue: scale } : {})}
+            onChange={setScale}
           >
-            <Form.Dropdown.Section title="Formats">
-              {OUTPUT_VIDEO_EXTENSIONS.map((format) => (
-                <Form.Dropdown.Item key={format} value={format} title={format} />
-              ))}
-            </Form.Dropdown.Section>
+            {["600", "800", "1024"].map((scale) => (
+              <Form.Dropdown.Item value={scale} title={scale} key={scale} />
+            ))}
           </Form.Dropdown>
         </>
       )}

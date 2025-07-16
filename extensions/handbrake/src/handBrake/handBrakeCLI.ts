@@ -1,46 +1,16 @@
 import fs from "fs";
-import os from "os";
-import { LocalStorage } from "@raycast/api";
-import { execPromise } from "../util/exec";
 import { parsePresetOutput, PresetGroup } from "./presetParser";
+import { execPromise } from "../util/exec";
 
 /**
- * Try to obtain the configured CLI path
+ * Get Presets from HandbakeCLI
  */
-export async function getHandBrakeCLIPath(): Promise<string | null> {
-  const path = await LocalStorage.getItem("HandBrakeCLIPath");
-  if (path && typeof path === "string" && path.trim() && fs.existsSync(path)) {
-    console.log(`Found Configured HandBrakeCLI at: ${path}`);
-    return path;
-  }
-  return null;
-}
-
-/**
- * Check if HandBrake returns a valid version
- */
-export async function checkHandBrakeVersion(path: string): Promise<string | null> {
-  let err;
+export async function getPresets(): Promise<PresetGroup[]> {
   try {
-    const { stdout, stderr } = await execPromise(`${path} --version`);
-    const versionMatch = stdout.match(/HandBrake ((?:\d+)\.(?:\d+).(?:\d+))/);
-    if (versionMatch) {
-      return versionMatch[1];
-    }
-    err = stderr;
-  } catch (error) {
-    console.error("Error checking version:", error, err);
-  }
-  return null;
-}
-
-export async function getPresets(): Promise<PresetGroup[]>  {
-  try {
-    const cli = await getHandBrakeCLIPath();
+    const cli = await findHandBrakeCLIPath();
     const { stdout, stderr } = await execPromise(`${cli} --preset-list`);
 
-    // CLI outputs in the stderr
-    const output = stdout && stdout.trim().length > 0 ? stdout : stderr;
+     const output = stdout && stdout.trim().length > 0 ? stdout : stderr;
     return parsePresetOutput(output);
   } catch (error) {
     console.error("Error loading presets:", error);
@@ -53,31 +23,12 @@ export async function getPresets(): Promise<PresetGroup[]>  {
  */
 export async function findHandBrakeCLIPath(): Promise<string | null> {
   try {
-    // Check common system installation paths directly
-    const platform = os.platform();
-    const commonPaths = [];
-
-    if (platform === "darwin") {
-      // macOS common paths
-      commonPaths.push(
-        // Homebrew (Intel)
-        "/usr/local/bin/HandBrakeCLI",
-        // Homebrew (Apple Silicon)
-        "/opt/homebrew/bin/HandBrakeCLI",
-      );
-    } else if (platform === "win32") {
-      // Windows common paths
-      const programFiles = process.env.ProgramFiles || "C:\\Program Files";
-      const programFilesX86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
-
-      commonPaths.push(
-        `${programFiles}\\HandBrake\\HandBrakeCLI.exe`,
-        `${programFilesX86}\\HandBrake\\HandBrakeCLI.exe`,
-      );
-    } else {
-      // Linux & Unix common paths
-      commonPaths.push("/usr/local/bin/HandBrakeCLI");
-    }
+    const commonPaths = [
+      // Homebrew (Intel)
+      "/usr/local/bin/HandBrakeCLI",
+      // Homebrew (Apple Silicon)
+      "/opt/homebrew/bin/HandBrakeCLI",
+    ];
 
     // Check if any of the common paths exist and meet version requirements
     for (const path of commonPaths) {
