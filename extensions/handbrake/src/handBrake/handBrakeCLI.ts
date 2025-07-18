@@ -10,7 +10,7 @@ export async function getPresets(): Promise<PresetGroup[]> {
     const cli = await findHandBrakeCLIPath();
     const { stdout, stderr } = await execPromise(`${cli} --preset-list`);
 
-     const output = stdout && stdout.trim().length > 0 ? stdout : stderr;
+    const output = stdout && stdout.trim().length > 0 ? stdout : stderr;
     return parsePresetOutput(output);
   } catch (error) {
     console.error("Error loading presets:", error);

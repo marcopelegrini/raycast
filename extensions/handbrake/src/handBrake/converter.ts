@@ -35,7 +35,6 @@ export async function convertMedia(
   outputFormat: (typeof OUTPUT_VIDEO_EXTENSIONS)[number],
   preset: string,
 ): Promise<string> {
-  
   let cli = await findHandBrakeCLIPath();
   if (!cli) {
     throw new Error("HandbrakeCLI is not installed or configured");

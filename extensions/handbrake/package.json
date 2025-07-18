@@ -10,7 +10,8 @@
     "Media",
     "Web",
     "Productivity",
-    "Design Tools"
+    "Design Tools",
+    "Developer Tools"
   ],
   "platforms": [
     "macOS",
@@ -19,7 +20,7 @@
   "commands": [
     {
       "name": "convert",
-      "title": "Convert video",
+      "title": "Convert Video",
       "description": "Converts the selected video to another format using a preset",
       "mode": "view"
     }

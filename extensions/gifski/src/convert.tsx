@@ -16,11 +16,10 @@ export default function Command() {
         setFFMpeg(cliPath);
         const gifskiPath = await findGifSkiPath();
         setGifSki(gifskiPath);
-        
+
         if (cliPath && gifskiPath) {
           try {
             const finderItems = await getSelectedFinderItems();
-            console.log(finderItems);
             setInitialFinderFiles(finderItems.map((item) => item.path));
           } catch (finderError) {
             console.warn("Could not get selected Finder items:", finderError);
@@ -55,8 +54,7 @@ Requirements:
 
 ${
   !ffmpeg
-    ? 
-`
+    ? `
 - Please install ffmpeg:
 
       brew install ffmpeg
@@ -66,8 +64,7 @@ ${
 
 ${
   !gifski
-    ? 
-`
+    ? `
 - Please install gifski: 
       
       brew install gifski
@@ -77,6 +74,6 @@ ${
 
 - Reload the extension.
 `}
-    />    
+    />
   );
 }

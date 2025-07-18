@@ -35,9 +35,8 @@ export async function convertMedia(
   outputFormat: string,
   fps: string,
   scaleW: string,
+  scaleH: string,
 ): Promise<string> {
-
-  
   const ffmpeg = await findFFMpegPath();
   const gifski = await findGifSkiPath();
 
@@ -48,7 +47,7 @@ export async function convertMedia(
   let command = ffmpeg;
 
   command += ` -i ${filePath}`;
-  command += ` -vf "fps=${fps},scale=${scaleW}:-1" -f yuv4mpegpipe -`;
+  command += ` -vf "fps=${fps},scale=${scaleW}:${scaleH}" -f yuv4mpegpipe -`;
   command += ` | ${gifski}`;
 
   const finalOutputPath = getUniqueOutputPath(filePath, outputFormat);

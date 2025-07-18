@@ -13,7 +13,7 @@ export default function Command() {
       try {
         const cliPath = await findHandBrakeCLIPath();
         setHandBrakeCLIPath(cliPath);
-        
+
         if (cliPath) {
           try {
             const finderItems = await getSelectedFinderItems();
@@ -53,6 +53,6 @@ Requirements:
 
       brew install handbrake
 `}
-    />    
+    />
   );
 }

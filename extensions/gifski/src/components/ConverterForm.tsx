@@ -1,46 +1,99 @@
 import { Form, ActionPanel, Action, showToast, Toast, showInFinder, Icon, LocalStorage } from "@raycast/api";
 import { useState, useEffect } from "react";
-import {
-  convertMedia,
-  checkExtensionType,
-  INPUT_VIDEO_EXTENSIONS,
-} from "../gifski/converter";
+import { convertMedia, checkExtensionType, INPUT_VIDEO_EXTENSIONS } from "../gifski/converter";
+import { useForm } from "@raycast/utils";
+
+interface ConvertFormProps {
+  fps: string;
+  scaleW: string;
+  scaleH: string;
+}
 
 export function ConverterForm({ initialFiles = [] }: { initialFiles?: string[] }) {
   const [isConverting, setConverting] = useState(false);
   const [currentFiles, setCurrentFiles] = useState<string[]>(initialFiles || []);
-  const [fps, setFps] = useState<string>("10");
-  const [scale, setScale] = useState<string>("1024");
 
   useEffect(() => {
     loadDefaults();
     handleFileSelect(initialFiles);
   }, []);
 
-  const loadDefaults = () => {
-    (async () => {
-      const fps = await LocalStorage.getItem("fps");
-      const scale = await LocalStorage.getItem("scale");
-      if (fps && typeof fps === "string") {
-        setFps(fps);
+  const submit = async (form: ConvertFormProps) => {
+    setConverting(true);
+    const toast = await showToast({
+      style: Toast.Style.Animated,
+      title: `Converting ${currentFiles.length} file${currentFiles.length > 1 ? "s" : ""}...`,
+    });
+
+    for (const item of currentFiles) {
+      try {
+        const outputPath = await convertMedia(
+          item,
+          ".gif",
+          form.fps,
+          form.scaleW,
+          form.scaleH.toLocaleLowerCase() == "auto" ? "-1" : form.scaleH,
+        );
+
+        await toast.hide();
+        await showToast({
+          style: Toast.Style.Success,
+          title: "File converted successfully!",
+          message: "⌘O to open the file",
+          primaryAction: {
+            title: "Open File",
+            shortcut: { modifiers: ["cmd"], key: "o" },
+            onAction: () => {
+              showInFinder(outputPath);
+            },
+          },
+        });
+
+        console.log("Storing defaults", form.fps, form.scaleW, form.scaleH);
+        await LocalStorage.setItem("fps", form.fps);
+        await LocalStorage.setItem("scaleW", form.scaleW);
+        await LocalStorage.setItem("scaleH", form.scaleH);
+      } catch (error) {
+        await toast.hide();
+        await showToast({ style: Toast.Style.Failure, title: "Conversion failed", message: String(error) });
       }
-      if (scale && typeof scale === "string") {
-        setScale(scale);
-      }
-    })();
+    }
+    setConverting(false);
   };
 
-  useEffect(() => {
-    (async () => {
-      if (fps) {
-        await LocalStorage.setItem("preset", fps);
-      }
-      if (scale) {
-        await LocalStorage.setItem("preset", scale);
-      }
-    })();
-  }, [fps, scale]);
+  const { handleSubmit, itemProps, setValue } = useForm<ConvertFormProps>({
+    onSubmit: submit,
+    validation: {
+      fps: (value) => {
+        if (!value?.match("^[0-9]*$")) {
+          return "Fps must be a number";
+        }
+      },
+      scaleW: (value) => {
+        if (!value?.match("^[0-9]*$")) {
+          return "Width must be a number";
+        }
+      },
+      scaleH: (value) => {
+        if (!value!.match("^[0-9]*$") && value?.toLocaleLowerCase() != "auto") {
+          return "Height must be a number or 'Auto'";
+        }
+      },
+    },
+  });
 
+  const loadDefaults = () => {
+    (async () => {
+      const fps: string = (await LocalStorage.getItem("fps")) ?? "10";
+      setValue("fps", fps);
+
+      const scaleW: string = (await LocalStorage.getItem("scaleW")) ?? "1014";
+      setValue("scaleW", scaleW);
+
+      const scaleH: string = (await LocalStorage.getItem("scaleH")) ?? "Auto";
+      setValue("scaleH", scaleH);
+    })();
+  };
 
   const handleFileSelect = (files: string[]) => {
     // Files to convert
@@ -66,38 +119,6 @@ export function ConverterForm({ initialFiles = [] }: { initialFiles?: string[] }
     }
   };
 
-  const handleSubmit = async () => {
-    setConverting(true);
-    const toast = await showToast({
-      style: Toast.Style.Animated,
-      title: `Converting ${currentFiles.length} file${currentFiles.length > 1 ? "s" : ""}...`,
-    });
-
-    for (const item of currentFiles) {
-      try {
-        const outputPath = await convertMedia(item, ".gif", fps, scale);
-
-        await toast.hide();
-        await showToast({
-          style: Toast.Style.Success,
-          title: "File converted successfully!",
-          message: "⌘O to open the file",
-          primaryAction: {
-            title: "Open File",
-            shortcut: { modifiers: ["cmd"], key: "o" },
-            onAction: () => {
-              showInFinder(outputPath);
-            },
-          },
-        });
-      } catch (error) {
-        await toast.hide();
-        await showToast({ style: Toast.Style.Failure, title: "Conversion failed", message: String(error) });
-      }
-    }
-    setConverting(false);
-  };
-
   return (
     <Form
       isLoading={isConverting}
@@ -114,32 +135,13 @@ export function ConverterForm({ initialFiles = [] }: { initialFiles?: string[] }
         title="Select files"
         allowMultipleSelection={true}
         value={currentFiles}
-        onChange={(newFiles) => {
-          handleFileSelect(newFiles);
-        }}
+        onChange={handleFileSelect}
       />
       {currentFiles.length > 0 && (
         <>
-          <Form.Dropdown
-            id="fps"
-            title="Select fps"
-            {...(fps.length > 0 && fps ? { defaultValue: fps } : {})}
-            onChange={setFps}
-          >
-            {["10", "15", "30"].map((fps) => (
-              <Form.Dropdown.Item value={fps} title={fps} key={fps} />
-            ))}
-          </Form.Dropdown>
-          <Form.Dropdown
-            id="scale"
-            title="Select scale"
-            {...(scale.length > 0 && scale ? { defaultValue: scale } : {})}
-            onChange={setScale}
-          >
-            {["600", "800", "1024"].map((scale) => (
-              <Form.Dropdown.Item value={scale} title={scale} key={scale} />
-            ))}
-          </Form.Dropdown>
+          <Form.TextField {...itemProps.fps} title="Frames per second (fps)" />
+          <Form.TextField {...itemProps.scaleW} title="Width (pixels)" />
+          <Form.TextField {...itemProps.scaleH} title="Height (pixels)" />
         </>
       )}
     </Form>
